@@ -2,3 +2,6 @@ opencv-python
 scikit-image
 matplotlib
 numpy
+torchvision
+albumentations
+segmentation-models-pytorch
