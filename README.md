@@ -26,12 +26,3 @@ Files
 - Demo.py: Main application script
 - requirements.txt: List of Python dependencies
 
-Notes
------
-- tkinter is usually bundled with Python. On Linux systems, you may need to install it manually:
-
-      sudo apt-get install python3-tk
-
-- For better performance, ensure that you have a GPU and a CUDA-enabled version of PyTorch.
-
-Enjoy segmenting!
