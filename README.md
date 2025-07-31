@@ -13,7 +13,7 @@ How to Run
 ----------
 To launch the demo, run:
 
-    python Demo.py
+    python App.py
 
 Features
 --------
