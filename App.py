@@ -106,7 +106,26 @@ class VideoSegmentationApp(QMainWindow):
         model.eval()
         logging.info(f"Model {model.name} loaded successfully")
         return model
-        
+    
+    def reset_val(self):
+        """Clear measurement data and reset the graphs for a new session/video."""
+        self.times = []
+        self.diameters = []
+        self.volumes = []
+
+        # Reset diameter graph
+        self.diameter_line.set_data([], [])
+        self.diameter_ax.relim()
+        self.diameter_ax.autoscale_view()
+        self.diameter_canvas.draw()
+
+        # Reset volume graph
+        self.volume_line.set_data([], [])
+        self.volume_ax.relim()
+        self.volume_ax.autoscale_view()
+        self.volume_canvas.draw()
+
+
     def setup_gui(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -302,6 +321,7 @@ class VideoSegmentationApp(QMainWindow):
         # Add panels to main layout
         main_layout.addWidget(left_widget)
         main_layout.addWidget(right_widget, 1)
+
         
     def setup_graph_tabs(self):
         """Setup graphs trong tab widget - TO HẾT CỠ"""
@@ -429,8 +449,11 @@ class VideoSegmentationApp(QMainWindow):
             self.play_btn.setEnabled(True)
             self.current_frame_number = 0
             
+            self.reset_val()
             # Load first frame
             self.seek_to_frame(0)
+
+            
             
             logging.info(f"Video loaded: {self.video_width}x{self.video_height}, "
                         f"{self.fps} FPS, {self.total_frames} frames")

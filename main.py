@@ -275,10 +275,13 @@ if __name__ == '__main__':
     
     
 
-    if(False):
+    if(True):
         #pass
         if(test):
             model = load_model("UnetPlusPlus_test_human_aug.pth",parent_folder = "./human" )
+        else:
+            name = "UnetPlusPlus_BL"
+            model, data = train(folder_names=folder_names,parent_folder = parent_folder,name = name , withAug = True, human = True)
         tab, res = evaluation([model], data.val)
         print(tab)
     #visualize_prediction(models[0],data.val, label=True)
