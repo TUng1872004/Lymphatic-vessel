@@ -201,7 +201,7 @@ class Data_Generator(Dataset):
             else:
                 self.data.append(self.apply(image, mask, False))
                 if self.transform is not None:
-                    for i in range(10):
+                    for i in range(5):
                         image_aug, mask_aug = self.apply(image,mask)
                         self.data.append((image_aug, mask_aug))
             self.pic.append((image, mask))

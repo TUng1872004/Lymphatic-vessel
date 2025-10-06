@@ -45,7 +45,9 @@ class BoundaryLoss(nn.Module):
             dist_outside = distance_transform_edt(1 - mask)
             
             # Level set function: negative inside, positive outside
-            phi = np.where(mask, -dist_inside, dist_outside)
+            #phi = np.where(mask, -dist_inside, dist_outside)\
+            phi = dist_outside - dist_inside
+            phi = phi / (np.max(np.abs(phi)) + 1e-8)
             phi_maps.append(phi)
         
         return torch.tensor(np.stack(phi_maps), dtype=torch.float32, 
@@ -193,11 +195,13 @@ def train(folder_names,  name = "Unet",parent_folder = "./annotated/Human" ,with
         in_channels=3,                  
         classes=1,                      
     )
+    
     criterion = CombinedLoss(
         alpha_schedule='rebalance',  # 'constant', 'increase', or 'rebalance'
-        initial_alpha=0.01,          # Starting alpha value
+        initial_alpha=0.1,          # Starting alpha value
         alpha_increment=0.01         # How much to increase alpha each epoch
     )
+    
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     print(torch.__version__)                

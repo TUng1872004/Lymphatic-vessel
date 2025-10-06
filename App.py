@@ -9,7 +9,7 @@ import logging
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
                             QWidget, QPushButton, QLabel, QSlider, QCheckBox, 
                             QLineEdit, QFileDialog, QMessageBox, QSpinBox,
-                            QProgressBar, QFrame, QGroupBox, QGridLayout, QTabWidget)
+                            QProgressBar, QFrame, QGroupBox, QGridLayout, QTabWidget, QRadioButton)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QPixmap, QImage, QFont
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 class VideoSegmentationApp(QMainWindow):
-    def __init__(self, model_path="UnetPlusPlus_human_aug.pth", model_folder="./human"):
+    def __init__(self, model_path="UnetPlusPlus_BL"):
         super().__init__()
         self.setWindowTitle("Video Segmentation and Diameter Measurement - Enhanced")
         # Maximize window để tận dụng toàn bộ màn hình
@@ -31,12 +31,16 @@ class VideoSegmentationApp(QMainWindow):
         self.cap = None
         self.current_frame = None
         self.current_mask = None
+
         self.current_diameter = 0.0
         self.current_time = 0.0
         self.current_volume = 0.0
+
         self.times = []
         self.diameters = []
         self.volumes = []
+
+
         self.playing = False
         self.total_frames = 0
         self.current_frame_number = 0
@@ -52,10 +56,16 @@ class VideoSegmentationApp(QMainWindow):
         # Initialize device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logging.info(f"Using device: {self.device}")
-        
+
+        model_folder=["./human", "./rat"]
+        self.models = {}
         # Load segmentation model
         try:
-            self.model = self.load_model(model_path, self.device, model_folder)
+            self.models["human"] = self.load_model(model_path + "_human_aug.pth", self.device, model_folder[0])
+            self.models["rat"] = self.load_model(model_path + "_aug.pth", self.device, model_folder[1])
+            self.model = self.models["human"]
+            self.current_model_type = "human"
+            logging.info(f"Model {self.model.name} loaded and ready")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load model: {str(e)}")
             self.model = None
@@ -72,12 +82,13 @@ class VideoSegmentationApp(QMainWindow):
         logging.info("GUI initialized")
         
     def load_model(self, path, device, parent_folder="./human"):
-        model_path = os.path.join(parent_folder, path)
-        logging.info(f"Loading model from {model_path}")
+        #model_path = os.path.join(parent_folder, path)
+        #logging.info(f"Loading model from {model_path}")
         
         from huggingface_hub import hf_hub_download
-        huggingface_model_repo = "tungDKT/Unet"
-        huggingface_model_filename = "UnetPlusPlus_human_aug.pth"
+        # huggingface_model_repo = "tungDKT/Unet" # Old model, the legacy of our research
+        huggingface_model_repo = "TungDKS/Lymphatic_Segmentation"
+        huggingface_model_filename = path
 
         try:
             # Download from Hugging Face
@@ -198,7 +209,7 @@ class VideoSegmentationApp(QMainWindow):
         self.x_value_label = QLabel("X: 50")
         measure_layout.addWidget(self.x_value_label)
         
-        # Checkboxes
+        # ==================== Checkbox for modes ====================
         self.overlay_mask_cb = QCheckBox("Overlay Mask")
         self.overlay_mask_cb.setChecked(True)
         self.overlay_mask_cb.stateChanged.connect(self.update_display_if_paused)
@@ -209,8 +220,32 @@ class VideoSegmentationApp(QMainWindow):
         measure_layout.addWidget(self.manual_diameter_cb)
         
         left_panel.addWidget(measure_group)
-        
-        # Results group
+
+
+        # ==================== MODEL SELECTION GROUP ====================
+        model_group = QGroupBox("Model Selection")
+        model_layout = QVBoxLayout(model_group)
+
+        # Radio buttons for mode selection
+        self.human_radio = QRadioButton("Human")
+        self.rat_radio = QRadioButton("Rat")
+
+        # Set default mode (for example, Human)
+        self.human_radio.setChecked(True)
+
+        # Connect radio buttons to the handler function
+        self.human_radio.toggled.connect(lambda checked: self.set_model("human") if checked else None)
+        self.rat_radio.toggled.connect(lambda checked: self.set_model("rat") if checked else None)
+
+        # Add to layout
+        model_layout.addWidget(self.human_radio)
+        model_layout.addWidget(self.rat_radio)
+
+        # Add the group to the left panel (below Measurement Controls)
+        left_panel.addWidget(model_group)
+
+
+        # ==================== Result GROUP ====================
         results_group = QGroupBox("Current Measurements")
         results_layout = QVBoxLayout(results_group)
         
@@ -321,8 +356,24 @@ class VideoSegmentationApp(QMainWindow):
         # Add panels to main layout
         main_layout.addWidget(left_widget)
         main_layout.addWidget(right_widget, 1)
+        """
+        model_selector_layout = QHBoxLayout()
+        model_selector_layout.addWidget(QLabel("Model:"))
+        self.model_combo = QComboBox()
+        self.model_combo.addItems(["Human", "Rat"])
+        self.model_combo.setCurrentText(self.current_model_type)
+        self.model_combo.currentTextChanged.connect(self.change_model)
+        model_selector_layout.addWidget(self.model_combo)
+        results_layout.addLayout(model_selector_layout)
+        """
 
-        
+    def set_model(self, model_type):
+        if self.current_model_type != model_type:    
+            self.model = self.models[model_type]
+            self.current_model_type = model_type
+            QMessageBox.information(self, "Model Changed", f"Switched to {model_type} model.")
+            logging.info(f"Switched to {model_type} model.")
+
     def setup_graph_tabs(self):
         """Setup graphs trong tab widget - TO HẾT CỠ"""
         

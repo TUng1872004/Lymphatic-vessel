@@ -34,7 +34,6 @@ def boundary_f1_score(preds, masks):
         m_edges = measure.find_contours(m, 0.5)
         if not p_edges or not m_edges:
             continue
-        # Approximate: use number of contours as edge overlap (not ideal but illustrative)
         score = min(len(p_edges), len(m_edges)) / max(len(p_edges), len(m_edges))
         scores.append(score)
 
@@ -239,20 +238,21 @@ if __name__ == '__main__':
     start = time.time()
     import multiprocessing
     multiprocessing.freeze_support() 
-    parent_folder = "./annotated/Human"
+    parent_folder = "./annotated/Rat"
     folder_names = [name for name in os.listdir(parent_folder)
                     if os.path.isdir(os.path.join(parent_folder, name))]
     print(folder_names)
     test = False
-    
+    model_name = "UnetPlusPlus_BL"
+    """
     models = []
     if test == True:
         data = Data_Generator(False)
         data.load_data(os.path.join(parent_folder, folder_names[0]),validate = True)
     else:
         for i, folder in enumerate(folder_names):
-            name = f"UnetPlusPlus_BL_{i}"
-            model, data = train([folder_names[f] for f in range(len(folder_names)) if f != i],parent_folder = parent_folder,name = name , withAug = True, human = True)
+            name = f"{model_name}_{i}"
+            model, data = train([folder_names[f] for f in range(len(folder_names)) if f != i],parent_folder = parent_folder,name = name , withAug = True, human = False)
             data.load_data(os.path.join(parent_folder, folder_names[i]),validate = True)
             models.append((model, data))
          
@@ -270,20 +270,22 @@ if __name__ == '__main__':
             headers = ["Model Name", "IoU", "Dice", "Pixel Acc", "Boundary F1"]
             avg_table = tabulate(results, headers=headers, tablefmt="fancy_grid")
 
-            with open(f"Visualize/compare_BL_{idx}.txt", 'w') as f:
+            with open(f"Visualize/compare_BL_rat_{idx}.txt", 'w') as f:
                 f.write(avg_table)
     
+    """
     
 
     if(True):
         #pass
         if(test):
-            model = load_model("UnetPlusPlus_test_human_aug.pth",parent_folder = "./human" )
+            model = load_model("UnetPlusPlus_test_human_aug.pth",parent_folder = "./rat" )
+            tab, res = evaluation([model], data.val)
+            print(tab)
         else:
-            name = "UnetPlusPlus_BL"
-            model, data = train(folder_names=folder_names,parent_folder = parent_folder,name = name , withAug = True, human = True)
-        tab, res = evaluation([model], data.val)
-        print(tab)
+            name = model_name
+            model, data = train(folder_names=folder_names,parent_folder = parent_folder,name = name , withAug = True, human = False)
+        
     #visualize_prediction(models[0],data.val, label=True)
     #visualize_prediction(models[1],data.val, label=True)
     end = time.time()
