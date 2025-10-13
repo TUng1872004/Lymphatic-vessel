@@ -20,12 +20,12 @@ from matplotlib.figure import Figure
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 class VideoSegmentationApp(QMainWindow):
-    def __init__(self, model_path="UnetPlusPlus_BL"):
+    def __init__(self, model_path="UnetPlusPlus_BL", running_mode = "online"):
         super().__init__()
         self.setWindowTitle("Video Segmentation and Diameter Measurement - Enhanced")
         # Maximize window để tận dụng toàn bộ màn hình
         self.showMaximized()
-        
+        self.running_mode = running_mode
         # Video properties
         self.video_path = None
         self.cap = None
@@ -82,8 +82,7 @@ class VideoSegmentationApp(QMainWindow):
         logging.info("GUI initialized")
         
     def load_model(self, path, device, parent_folder="./human"):
-        #model_path = os.path.join(parent_folder, path)
-        #logging.info(f"Loading model from {model_path}")
+
         
         from huggingface_hub import hf_hub_download
         # huggingface_model_repo = "tungDKT/Unet" # Old model, the legacy of our research
@@ -91,13 +90,19 @@ class VideoSegmentationApp(QMainWindow):
         huggingface_model_filename = path
 
         try:
-            # Download from Hugging Face
-            downloaded_model_path = hf_hub_download(
-                repo_id=huggingface_model_repo,
-                filename=huggingface_model_filename,
-                repo_type="model"
-            )
-
+            if self.running_mode == "online":
+                model_path = os.path.join(parent_folder, path)
+                if not os.path.exists(model_path):
+                    raise FileNotFoundError(f"Model file not found: {model_path}")
+                
+            if self.running_mode == "online":
+                model_path = hf_hub_download(
+                    repo_id=huggingface_model_repo,
+                    filename=huggingface_model_filename,
+                    repo_type="model"
+                )
+                
+                
             # Infer model type from file name
             model_type = huggingface_model_filename.split("_")[0]
             model = getattr(smp, model_type)(
@@ -107,7 +112,7 @@ class VideoSegmentationApp(QMainWindow):
                 classes=1
             )
 
-            model.load_state_dict(torch.load(downloaded_model_path, map_location=device))
+            model.load_state_dict(torch.load(model_path, map_location=device))
             model.name = huggingface_model_filename.replace(".pth", "")
         except Exception as e:
             logging.error(f"Failed to load model from Hugging Face: {e}")
@@ -568,7 +573,7 @@ class VideoSegmentationApp(QMainWindow):
             return
             
         self.current_frame = frame
-        self.current_frame_number += 1
+        self.current_frame_number += 4
         self.current_time = self.current_frame_number / self.fps
         
         # Apply segmentation and calculate measurements
@@ -771,7 +776,7 @@ class VideoSegmentationApp(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    window = VideoSegmentationApp()
+    window = VideoSegmentationApp(running_mode = "online")
     window.show()
     sys.exit(app.exec_())
 
