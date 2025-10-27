@@ -9,7 +9,8 @@ import logging
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
                             QWidget, QPushButton, QLabel, QSlider, QCheckBox, 
                             QLineEdit, QFileDialog, QMessageBox, QSpinBox,
-                            QProgressBar, QFrame, QGroupBox, QGridLayout, QTabWidget, QRadioButton)
+                            QProgressBar, QFrame, QGroupBox, QGridLayout, QTabWidget, 
+                            QRadioButton)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QPixmap, QImage, QFont
 import matplotlib.pyplot as plt
@@ -26,12 +27,26 @@ class VideoSegmentationApp(QMainWindow):
         # Maximize window để tận dụng toàn bộ màn hình
         self.showMaximized()
         self.running_mode = running_mode
+
         # Video properties
         self.video_path = None
         self.cap = None
         self.current_frame = None
         self.current_mask = None
 
+        # Display attributes
+        self.playing = False
+        self.total_frames = 0
+        self.current_frame_number = 0
+        self.fps = 30
+
+
+        self.calibration_factor = 1.0
+        self.video_width = 0
+        self.video_height = 0
+        self.video_speed = 4
+
+        # Measurement properties
         self.current_diameter = 0.0
         self.current_time = 0.0
         self.current_volume = 0.0
@@ -40,15 +55,6 @@ class VideoSegmentationApp(QMainWindow):
         self.diameters = []
         self.volumes = []
 
-
-        self.playing = False
-        self.total_frames = 0
-        self.current_frame_number = 0
-        self.fps = 30
-        self.calibration_factor = 1.0
-        self.video_width = 0
-        self.video_height = 0
-        
         # Timer for playback
         self.timer = QTimer()
         self.timer.timeout.connect(self.process_next_frame)
@@ -90,21 +96,22 @@ class VideoSegmentationApp(QMainWindow):
         huggingface_model_filename = path
 
         try:
-            if self.running_mode == "online":
+            if self.running_mode == "local":
                 model_path = os.path.join(parent_folder, path)
                 if not os.path.exists(model_path):
-                    raise FileNotFoundError(f"Model file not found: {model_path}")
+                    print(f"Model file not found: {model_path}")
+                    self.running_mode == "online"
                 
             if self.running_mode == "online":
                 model_path = hf_hub_download(
                     repo_id=huggingface_model_repo,
-                    filename=huggingface_model_filename,
+                    filename=path,
                     repo_type="model"
                 )
                 
                 
             # Infer model type from file name
-            model_type = huggingface_model_filename.split("_")[0]
+            model_type = path.split("_")[0]
             model = getattr(smp, model_type)(
                 encoder_name="resnet34",
                 encoder_weights=None,
@@ -113,7 +120,7 @@ class VideoSegmentationApp(QMainWindow):
             )
 
             model.load_state_dict(torch.load(model_path, map_location=device))
-            model.name = huggingface_model_filename.replace(".pth", "")
+            model.name = path.replace(".pth", "")
         except Exception as e:
             logging.error(f"Failed to load model from Hugging Face: {e}")
             raise
@@ -195,6 +202,20 @@ class VideoSegmentationApp(QMainWindow):
         self.calibrate_btn = QPushButton("Calibrate")
         self.calibrate_btn.clicked.connect(self.calibrate)
         calib_layout.addWidget(self.calibrate_btn, 2, 0, 1, 2)
+
+        calib_layout.addWidget(QLabel("Time calibration (real/video):"), 3, 0)
+        self.video_speed_spin = QSpinBox()
+        self.video_speed_spin.setMinimum(1)
+        self.video_speed_spin.setMaximum(25)
+        self.video_speed_spin.setSingleStep(1)  # Increment step
+        self.video_speed_spin.setValue(4)       # Default value
+        self.video_speed_spin.valueChanged.connect(self.update_video_speed)
+        calib_layout.addWidget(self.video_speed_spin, 3, 1)
+
+        left_panel.addWidget(calib_group)
+
+        # Method to sync value
+        
         
         left_panel.addWidget(calib_group)
         
@@ -378,6 +399,9 @@ class VideoSegmentationApp(QMainWindow):
             self.current_model_type = model_type
             QMessageBox.information(self, "Model Changed", f"Switched to {model_type} model.")
             logging.info(f"Switched to {model_type} model.")
+
+    def update_video_speed(self, value):
+            self.video_speed = value
 
     def setup_graph_tabs(self):
         """Setup graphs trong tab widget - TO HẾT CỠ"""
@@ -573,7 +597,7 @@ class VideoSegmentationApp(QMainWindow):
             return
             
         self.current_frame = frame
-        self.current_frame_number += 4
+        self.current_frame_number += self.video_speed
         self.current_time = self.current_frame_number / self.fps
         
         # Apply segmentation and calculate measurements
