@@ -87,11 +87,11 @@ augmentation the model prone to noise outside the vessel; with it they are centr
 
 **Without augmentation** — noisy, out-of-bounds masks:
 
-![Without augmentation](docs/No_aug.png)
+![Without augmentation](./docs/No_aug.png)
 
 **With augmentation** — masks align with the ground truth:
 
-![With augmentation](docs/V3_1.png)
+![With augmentation](./docs/V3_1.png)
 
 Among architectures on the augmented set, U-Net++ gives the best balance (IoU 0.8748, Dice 0.9312) while PSPNet leads on Boundary F1 (0.8472). The app ships with U-Net++ trained with BoundaryLoss.
 
